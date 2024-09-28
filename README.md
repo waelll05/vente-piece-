@@ -124,7 +124,7 @@ sudo sed -i 's/172.20.1.101/localhost/g' /var/www/html/index.php
    Create an `.env` file in the root of your project folder.
 
    ```sh
-   cat > /var/www/html/.env <<-EOF
+   sudo tee /var/www/html/.env <<-EOF
    DB_HOST=localhost
    DB_USER=ecomuser
    DB_PASSWORD=ecompassword
@@ -135,25 +135,28 @@ sudo sed -i 's/172.20.1.101/localhost/g' /var/www/html/index.php
 
    Update the `index.php` file to load the environment variables from the `.env` file and use them to connect to the database.
 
-   ```php
+   Create a temporary file /tmp/replacement_code_file with php function to load environment variables.
+
+   ```sh
+   cat > /tmp/replacement_code_file <<-EOF
    <?php
    // Function to load environment variables from a .env file
-   function loadEnv($path)
+   function loadEnv(\$path)
    {
-       if (!file_exists($path)) {
+       if (!file_exists(\$path)) {
            return false;
        }
 
-       $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-       foreach ($lines as $line) {
-           if (strpos(trim($line), '#') === 0) {
+        \$lines = file(\$path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+       foreach (\$lines as \$line) {
+           if (strpos(trim(\$line), '#') === 0) {
                continue;
            }
 
-           list($name, $value) = explode('=', $line, 2);
-           $name = trim($name);
-           $value = trim($value);
-           putenv(sprintf('%s=%s', $name, $value));
+           list(\$name, \$value) = explode('=', \$line, 2);
+            \$name = trim(\$name);
+            \$value = trim(\$value);
+           putenv(sprintf('%s=%s', \$name, \$value));
        }
        return true;
    }
@@ -162,15 +165,23 @@ sudo sed -i 's/172.20.1.101/localhost/g' /var/www/html/index.php
    loadEnv(__DIR__ . '/.env');
 
    // Retrieve the database connection details from environment variables
-   $dbHost = getenv('DB_HOST');
-   $dbUser = getenv('DB_USER');
-   $dbPassword = getenv('DB_PASSWORD');
-   $dbName = getenv('DB_NAME');
+    \$dbHost = getenv('DB_HOST');
+    \$dbUser = getenv('DB_USER');
+    \$dbPassword = getenv('DB_PASSWORD');
+    \$dbName = getenv('DB_NAME');
 
    ?>
-
+   EOF
+   ```
    ON a multi-node setup, remember to provide the IP address of the database server in the .env file.
 
+   Insert the temporary file code block in index.php after line 104 and remove the file. 
+
+   ```sh
+   sudo sed -i -e '104r /tmp/replacement_code_file' /var/www/html/index.php
+
+   rm /tmp/replacement_code_file
+   ```
 
 7. Test
 
